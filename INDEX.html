@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GCS Infinite Generator</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f8fafc;
+      --accent: #38bdf8;
+      --correct: #22c55e;
+      --incorrect: #ef4444;
+      --border: #334155;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      max-width: 480px;
+      width: 100%;
+    }
+    h2 {
+      text-align: center;
+      color: var(--accent);
+      margin-top: 8px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .scenario {
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+    .select-group {
+      margin-top: 12px;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+      color: #94a3b8;
+    }
+    select {
+      width: 100%;
+      padding: 10px;
+      background: #0f172a;
+      color: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 0.95rem;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .btn-submit { background: var(--accent); color: #0f172a; }
+    .btn-next { background: #475569; color: #fff; display: none; }
+    .result {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      display: none;
+      line-height: 1.5;
+      font-size: 0.95rem;
+    }
+    .result.correct { background: rgba(34, 197, 94, 0.15); border: 1px solid var(--correct); }
+    .result.incorrect { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--incorrect); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>GCS Infinite Practice</h2>
+    
+    <div class="card">
+      <div class="scenario" id="case-text">Generating scenario...</div>
+    </div>
+
+    <div class="card">
+      <div class="select-group">
+        <label for="eye">Eye Opening (E):</label>
+        <select id="eye">
+          <option value="">-- Select E Score --</option>
+          <option value="4">E4 - Spontaneous</option>
+          <option value="3">E3 - To Sound</option>
+          <option value="2">E2 - To Pressure/Pain</option>
+          <option value="1">E1 - None</option>
+        </select>
+
+        <label for="verbal">Verbal Response (V):</label>
+        <select id="verbal">
+          <option value="">-- Select V Score --</option>
+          <option value="5">V5 - Oriented</option>
+          <option value="4">V4 - Confused</option>
+          <option value="3">V3 - Inappropriate Words</option>
+          <option value="2">V2 - Incomprehensible Sounds</option>
+          <option value="1">V1 - None</option>
+        </select>
+
+        <label for="motor">Motor Response (M):</label>
+        <select id="motor">
+          <option value="">-- Select M Score --</option>
+          <option value="6">M6 - Obeys Commands</option>
+          <option value="5">M5 - Localizes Pain</option>
+          <option value="4">M4 - Normal Flexion (Withdrawal)</option>
+          <option value="3">M3 - Abnormal Flexion (Decorticate)</option>
+          <option value="2">M2 - Extension (Decerebrate)</option>
+          <option value="1">M1 - None</option>
+        </select>
+
+        <button class="btn-submit" id="check-btn" onclick="checkAnswer()">Check Score</button>
+        <button class="btn-next" id="next-btn" onclick="generateCase()">Generate Next Case ➔</button>
+      </div>
+
+      <div class="result" id="result-box"></div>
+    </div>
+  </div>
+
+  <script>
+    // --- RANDOMIZED GENERATOR DATA ---
+    const intros = [
+      "A 28-year-old male is brought to the ED after a road traffic accident.",
+      "You are evaluating a 65-year-old female in the ICU following a stroke.",
+      "A 40-year-old patient is assessed in the trauma bay post-fall.",
+      "During morning rounds, you check on a 50-year-old patient.",
+      "A 19-year-old is brought in unresponsive from a party."
+    ];
+
+    const eyeData = [
+      { score: 4, text: "Their eyes are open spontaneously as you approach the bed.", reason: "Spontaneous (E4)" },
+      { score: 3, text: "Their eyes are closed, but they open them when you loudly call their name.", reason: "To voice (E3)" },
+      { score: 2, text: "Their eyes remain closed to voice, but open briefly when you apply a trapezius squeeze.", reason: "To pain/pressure (E2)" },
+      { score: 1, text: "There is no eye opening at all, even with deep painful stimulus.", reason: "None (E1)" }
+    ];
+
+    const verbalData = [
+      { score: 5, text: "When asked, they correctly state their name, location, and the current month.", reason: "Oriented (V5)" },
+      { score: 4, text: "They are able to converse with you but seem confused and think they are at home.", reason: "Confused (V4)" },
+      { score: 3, text: "They respond to your questions with random, inappropriate words that do not make sense.", reason: "Inappropriate words (V3)" },
+      { score: 2, text: "They only make incomprehensible moaning and groaning sounds.", reason: "Incomprehensible sounds (V2)" },
+      { score: 1, text: "They make no vocal sounds whatsoever.", reason: "None (V1)" }
+    ];
+
+    const motorData = [
+      { score: 6, text: "They successfully follow your command to hold up two fingers.", reason: "Obeys commands (M6)" },
+      { score: 5, text: "When you apply pressure to their supraorbital notch, they reach up purposefully above their clavicle to push your hand away.", reason: "Localizes pain (M5)" },
+      { score: 4, text: "When a painful stimulus is applied to their nail bed, they pull their arm away quickly in a normal flexion reflex.", reason: "Normal flexion/withdrawal (M4)" },
+      { score: 3, text: "On pain stimulation, their arms flex abnormally inwards over their chest.", reason: "Abnormal flexion/decorticate (M3)" },
+      { score: 2, text: "On pain stimulation, their arms extend stiffly by their sides with inward rotation.", reason: "Abnormal extension/decerebrate (M2)" },
+      { score: 1, text: "There is no motor response to any stimulus.", reason: "None (M1)" }
+    ];
+
+    let currentCase = {};
+
+    function getRandomItem(array) {
+      return array[Math.floor(Math.random() * array.length)];
+    }
+
+    function generateCase() {
+      // Pick random elements
+      const intro = getRandomItem(intros);
+      const eye = getRandomItem(eyeData);
+      const verbal = getRandomItem(verbalData);
+      const motor = getRandomItem(motorData);
+
+      // Save correct answers
+      currentCase = {
+        e: eye.score,
+        v: verbal.score,
+        m: motor.score,
+        explanation: `<strong>Eye:</strong> ${eye.reason}<br><strong>Verbal:</strong> ${verbal.reason}<br><strong>Motor:</strong> ${motor.reason}`
+      };
+
+      // Construct vignette
+      const vignette = `${intro} ${eye.text} ${verbal.text} ${motor.text}`;
+      
+      // Update UI
+      document.getElementById('case-text').innerText = vignette;
+      document.getElementById('eye').value = "";
+      document.getElementById('verbal').value = "";
+      document.getElementById('motor').value = "";
+      document.getElementById('result-box').style.display = "none";
+      document.getElementById('check-btn').style.display = "block";
+      document.getElementById('next-btn').style.display = "none";
+    }
+
+    function checkAnswer() {
+      const eVal = parseInt(document.getElementById('eye').value);
+      const vVal = parseInt(document.getElementById('verbal').value);
+      const mVal = parseInt(document.getElementById('motor').value);
+
+      if (!eVal || !vVal || !mVal) {
+        alert("Please select values for Eye, Verbal, and Motor responses.");
+        return;
+      }
+
+      const userTotal = eVal + vVal + mVal;
+      const correctTotal = currentCase.e + currentCase.v + currentCase.m;
+      const isCorrect = (eVal === currentCase.e && vVal === currentCase.v && mVal === currentCase.m);
+
+      const resultBox = document.getElementById('result-box');
+      resultBox.style.display = "block";
+      
+      if (isCorrect) {
+        resultBox.className = "result correct";
+        resultBox.innerHTML = `<strong>Correct! Total GCS: ${correctTotal}</strong><br><br>${currentCase.explanation}`;
+      } else {
+        resultBox.className = "result incorrect";
+        resultBox.innerHTML = `<strong>Incorrect. You selected E${eVal} V${vVal} M${mVal} (Total: ${userTotal}).</strong><br><strong>Correct Answer: E${currentCase.e} V${currentCase.v} M${currentCase.m} (Total: ${correctTotal})</strong><br><br>${currentCase.explanation}`;
+      }
+
+      document.getElementById('check-btn').style.display = "none";
+      document.getElementById('next-btn').style.display = "block";
+    }
+
+    // Initialize first case on load
+    generateCase();
+  </script>
+</body>
+</html>
